@@ -11,11 +11,7 @@ import org.openremote.model.mqtt.ErrorResponseMessage;
 import org.openremote.model.mqtt.SuccessResponseMessage;
 import org.openremote.model.util.ValueUtil;
 
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
@@ -25,22 +21,17 @@ import static org.openremote.manager.mqtt.UserAssetProvisioningMQTTHandler.UNIQU
 import static org.openremote.manager.mqtt.gateway.GatewayMQTTHandler.*;
 import static org.openremote.model.Constants.*;
 
-public class GatewayMQTTPublishTopicHandler {
+@SuppressWarnings("unused")
+// MQTTPublicTopics are invoked through reflection - therefore IntelliJ cannot detect the usage
+public class GatewayMQTTPublishTopicHandler extends MQTTPublishTopicHandler {
     private static final Logger LOG = Logger.getLogger(GatewayMQTTPublishTopicHandler.class.getName());
     private final MQTTBrokerService mqttBrokerService;
     private final AssetStorageService assetStorageService;
     public static final String RESPONSE_TOPIC = "response";
 
-    private final HashMap<Topic, MQTTMessageHandler> handlers;
-
     public GatewayMQTTPublishTopicHandler(MQTTBrokerService mqttBrokerService, AssetStorageService assetStorageService) {
         this.mqttBrokerService = mqttBrokerService;
         this.assetStorageService = assetStorageService;
-        this.handlers = initHandlers();
-    }
-
-    public HashMap<Topic, MQTTMessageHandler> getHandlers() {
-        return handlers;
     }
 
 
@@ -96,6 +87,7 @@ public class GatewayMQTTPublishTopicHandler {
 
     @MQTTPublishTopic("+/+/operations/assets/+/attributes/+/update")
     protected void singleLineAttributeUpdateRequest(MQTTMessage message) {
+        //TODO: Implement single line attribute update
         String realm = topicTokenIndexToString(message.getTopic(), REALM_TOKEN_INDEX);
         String assetId = topicTokenIndexToString(message.getTopic(), ASSET_ID_TOKEN_INDEX);
         String attributeName = topicTokenIndexToString(message.getTopic(), ATTRIBUTE_NAME_TOKEN_INDEX);
@@ -109,6 +101,7 @@ public class GatewayMQTTPublishTopicHandler {
 
     @MQTTPublishTopic("+/+/operations/assets/+/attributes/update")
     protected void multiLineAttributeUpdateRequest(MQTTMessage message) {
+        //TODO: Implement multi-line attribute update
         String realm = topicTokenIndexToString(message.getTopic(), REALM_TOKEN_INDEX);
         String assetId = topicTokenIndexToString(message.getTopic(), ASSET_ID_TOKEN_INDEX);
         String attributeName = topicTokenIndexToString(message.getTopic(), ATTRIBUTE_NAME_TOKEN_INDEX);
@@ -121,43 +114,6 @@ public class GatewayMQTTPublishTopicHandler {
             return;
         }
 
-    }
-
-    // Initialize the topic consumers by scanning for methods annotated with @MQTTPublishTopic
-    protected HashMap<Topic, MQTTMessageHandler> initHandlers() {
-        Method[] methods = GatewayMQTTPublishTopicHandler.class.getDeclaredMethods();
-        HashMap<Topic, MQTTMessageHandler> topicConsumers = new HashMap<>();
-        for (Method method : methods) {
-            MQTTPublishTopic annotation = method.getAnnotation(MQTTPublishTopic.class);
-            if (annotation != null) {
-                Topic topic = Topic.parse(annotation.value());
-                MQTTMessageHandler consumer = new MQTTMessageHandler(message -> {
-                    try {
-                        method.invoke(this, message);
-                    } catch (Exception e) {
-                        LOG.warning("Failed to invoke consumer for topic " + topic + ": " + e.getMessage());
-                    }
-                });
-                topicConsumers.put(topic, consumer);
-            }
-        }
-        return topicConsumers;
-    }
-
-    // returns the handler for the given topic, if any
-    public Optional<MQTTMessageHandler> getHandler(Topic topic) {
-        MQTTMessageHandler matchedConsumer = null;
-        for (Map.Entry<Topic, MQTTMessageHandler> entry : getHandlers().entrySet()) {
-            String topicPattern = String.valueOf(entry.getKey());
-            MQTTMessageHandler consumer = entry.getValue();
-
-            // Translate MQTT topic patterns with wildcards (+ and #) into regular expressions
-            if (topic.toString().matches(topicPattern.replace("+", "[^/]+").replace("#", ".*"))) {
-                matchedConsumer = consumer;
-                break;
-            }
-        }
-        return Optional.ofNullable(matchedConsumer);
     }
 
     protected void publishErrorResponse(Topic topic, ErrorResponseMessage.Error error) {
