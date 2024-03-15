@@ -87,11 +87,7 @@ public class GatewayMQTTHandler extends MQTTHandler {
         timerService = container.getService(TimerService.class);
         assetProcessingService = container.getService(AssetProcessingService.class);
         assetStorageService = container.getService(AssetStorageService.class);
-        publishTopicHandler = new GatewayMQTTPublishTopicHandler(mqttBrokerService, assetStorageService);
-
-        publishTopicHandler.getHandlers().forEach((topic, handler) -> {
-            LOG.fine("Publish Topic handler registered for topic " + topic);
-        });
+        publishTopicHandler = new GatewayMQTTPublishTopicHandler(mqttBrokerService, assetStorageService, clientEventService, messageBrokerService);
     }
 
     @Override
@@ -125,8 +121,6 @@ public class GatewayMQTTHandler extends MQTTHandler {
         }
 
         // TODO: Proper authorization checks
-
-        // only events and operation response topics are allowed for subscriptions
         if (!isEventsTopic(topic)) {
             // check if the topic is a request-response operation topic
             if (isOperationsTopic(topic) && isResponseTopic(topic)) {

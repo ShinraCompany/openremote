@@ -23,6 +23,12 @@ public class SuccessResponseMessage {
         this.data = data;
     }
 
+    @JsonCreator
+    public SuccessResponseMessage(Success success, String realm) {
+        this.success = success;
+        this.realm = realm;
+    }
+
     public String getRealm() {
         return realm;
     }

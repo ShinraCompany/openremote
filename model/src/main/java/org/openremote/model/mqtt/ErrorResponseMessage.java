@@ -6,6 +6,9 @@ public class ErrorResponseMessage {
 
     public enum Error {
         MESSAGE_INVALID,
+        ASSET_NOT_FOUND,
+        ASSET_ID_INVALID,
+        ATTRIBUTE_NOT_FOUND,
         NOT_FOUND,
         UNAUTHORIZED,
         FORBIDDEN,
