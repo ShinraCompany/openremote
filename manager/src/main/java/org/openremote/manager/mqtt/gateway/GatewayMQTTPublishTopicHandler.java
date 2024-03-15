@@ -19,7 +19,6 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import static org.openremote.manager.event.ClientEventService.CLIENT_INBOUND_QUEUE;
-import static org.openremote.manager.mqtt.MQTTHandler.getAuthContextFromConnection;
 import static org.openremote.manager.mqtt.MQTTHandler.topicTokenIndexToString;
 import static org.openremote.manager.mqtt.UserAssetProvisioningMQTTHandler.UNIQUE_ID_PLACEHOLDER;
 import static org.openremote.manager.mqtt.gateway.GatewayMQTTHandler.*;
@@ -34,8 +33,10 @@ public class GatewayMQTTPublishTopicHandler extends MQTTPublishTopicHandler {
     private final AssetStorageService assetStorageService;
     private final ClientEventService clientEventService;
     private final MessageBrokerService messageBrokerService;
+
     public static final String RESPONSE_TOPIC = "response";
 
+    // Authorization is handled on a topic level, each topic handler should check if the connection is authorized to perform the action
     public GatewayMQTTPublishTopicHandler(MQTTBrokerService mqttBrokerService, AssetStorageService assetStorageService, ClientEventService clientEventService, MessageBrokerService messageBrokerService) {
         this.mqttBrokerService = mqttBrokerService;
         this.assetStorageService = assetStorageService;
@@ -47,9 +48,6 @@ public class GatewayMQTTPublishTopicHandler extends MQTTPublishTopicHandler {
     // Asset create request
     @MQTTPublishTopic("+/+/operations/assets/+/create")
     protected void assetCreateRequest(MQTTMessage message) {
-        String payloadContent = message.getBody().toString(StandardCharsets.UTF_8);
-        String realm = topicTokenIndexToString(message.getTopic(), REALM_TOKEN_INDEX);
-
         // restricted users are not allowed to write assets
         if (message.getAuthContext().hasRealmRole(RESTRICTED_USER_REALM_ROLE)) {
             publishErrorResponse(message.getTopic(), ErrorResponseMessage.Error.FORBIDDEN);
@@ -61,6 +59,9 @@ public class GatewayMQTTPublishTopicHandler extends MQTTPublishTopicHandler {
             publishErrorResponse(message.getTopic(), ErrorResponseMessage.Error.FORBIDDEN);
             return;
         }
+
+        String payloadContent = message.getBody().toString(StandardCharsets.UTF_8);
+        String realm = topicTokenIndexToString(message.getTopic(), REALM_TOKEN_INDEX);
 
         // Replace any placeholders in the template
         String assetTemplate = payloadContent;
@@ -94,6 +95,11 @@ public class GatewayMQTTPublishTopicHandler extends MQTTPublishTopicHandler {
         );
     }
 
+    @MQTTPublishTopic("+/+/operations/assets/+/delete")
+    protected void assetDeleteRequest(MQTTMessage message) {
+        //TODO: Implement asset delete request
+    }
+
 
     // Single line attribute update request
     @MQTTPublishTopic("+/+/operations/assets/+/attributes/+/update")
@@ -119,36 +125,20 @@ public class GatewayMQTTPublishTopicHandler extends MQTTPublishTopicHandler {
         var headers = prepareHeaders(realm, message.getConnection());
 
 
-        //TODO: (I don't fully get how this works) Ask how we can confirm that the message was sent and processed?
         messageBrokerService.getFluentProducerTemplate()
                 .withHeaders(headers)
                 .withBody(attributeEvent)
                 .to(CLIENT_INBOUND_QUEUE)
-                .asyncSend();
+                .asyncRequest();
 
-        // TODO: We should confirm that it was actually processed by a 'listener' or something (acknowledgement) - How?
-        // TODO: Maybe an acknowledgement topic that the listener can respond to?
-        // Assumption: The message was sent and processed
+
         mqttBrokerService.publishMessage(getResponseTopic(message.getTopic()), new SuccessResponseMessage(SuccessResponseMessage.Success.UPDATED, realm), MqttQoS.AT_MOST_ONCE);
     }
 
     // Multi line attribute update request
     @MQTTPublishTopic("+/+/operations/assets/+/attributes/update")
     protected void multiLineAttributeUpdateRequest(MQTTMessage message) {
-        //TODO: Implement multi-line attribute update
-        String realm = topicTokenIndexToString(message.getTopic(), REALM_TOKEN_INDEX);
-        String assetId = topicTokenIndexToString(message.getTopic(), ASSET_ID_TOKEN_INDEX);
-        String attributeName = topicTokenIndexToString(message.getTopic(), ATTRIBUTE_NAME_TOKEN_INDEX);
-        String payloadContent = message.getBody().toString(StandardCharsets.UTF_8);
-
-        var authContext = getAuthContextFromConnection(message.getConnection());
-
-        if (!Pattern.matches(ASSET_ID_REGEXP, assetId)) {
-            LOG.info("Received invalid asset ID " + assetId + " in multi-line attribute update request " + message.getConnection().getClientID());
-            return;
-        }
-
-
+        //TODO: Implement multi-line attribute update (expects attribute name and value pairs in the payload)
     }
 
     protected void publishErrorResponse(Topic topic, ErrorResponseMessage.Error error) {
@@ -162,5 +152,6 @@ public class GatewayMQTTPublishTopicHandler extends MQTTPublishTopicHandler {
     public String getResponseTopic(Topic topic) {
         return topic.toString() + "/" + RESPONSE_TOPIC;
     }
+
 
 }

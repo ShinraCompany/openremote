@@ -160,7 +160,6 @@ public class GatewayMQTTHandler extends MQTTHandler {
             LOG.fine("Identity provider is not keycloak");
             return false;
         }
-
         AuthContext authContext = getAuthContextFromSecurityContext(securityContext);
         if (authContext == null) {
             LOG.finer("Anonymous publish not supported: topic=" + topic + ", connection=" + connection);

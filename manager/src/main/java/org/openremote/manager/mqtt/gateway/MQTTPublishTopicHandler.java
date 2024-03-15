@@ -15,6 +15,7 @@ import static org.openremote.manager.mqtt.MQTTBrokerService.getConnectionIDStrin
 import static org.openremote.model.Constants.REALM_PARAM_NAME;
 import static org.openremote.model.Constants.SESSION_KEY;
 
+
 /**
  * Base class for MQTT Publish Topic Handlers.
  * Subclasses need to define topic handler methods annotated with {@link MQTTPublishTopic}
@@ -24,6 +25,7 @@ abstract class MQTTPublishTopicHandler {
 
     private static final Logger LOG = Logger.getLogger(MQTTPublishTopicHandler.class.getName());
     private final HashMap<Topic, MQTTMessageHandler> handlers;
+
 
     MQTTPublishTopicHandler() {
         LOG.info("Initializing MQTT Publish Topic Handler");
@@ -98,4 +100,6 @@ abstract class MQTTPublishTopicHandler {
         headers.put(REALM_PARAM_NAME, requestRealm);
         return headers;
     }
+
+
 }
