@@ -302,7 +302,7 @@ public abstract class MQTTHandler {
         return KeycloakIdentityProvider.getSecurityContext(subject);
     }
 
-    protected static Optional<AuthContext> getAuthContextFromConnection(RemotingConnection connection) {
+    public static Optional<AuthContext> getAuthContextFromConnection(RemotingConnection connection) {
         return Optional.ofNullable(getSubjectFromConnection(connection))
                 .map(MQTTHandler::getSecurityContextFromSubject)
                 .map(DefaultMQTTHandler::getAuthContextFromSecurityContext);
